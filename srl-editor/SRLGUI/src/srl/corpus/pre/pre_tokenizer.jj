@@ -1,0 +1,95 @@
+/* 
+ * Copyright (c) 2008, National Institute of Informatics
+ *
+ * This file is part of SRL, and is free
+ * software, licenced under the GNU Library General Public License,
+ * Version 2, June 1991.
+ *
+ * A copy of this licence is included in the distribution in the file
+ * licence.html, and is also available at http://www.fsf.org/licensing/licenses/info/GPLv2.html.
+*/
+options {
+  STATIC = false;
+  UNICODE_INPUT = true;
+  USER_CHAR_STREAM = true;
+  OPTIMIZE_TOKEN_MANAGER = true;
+}
+PARSER_BEGIN(PreTokenizer)
+/* 
+ * Copyright (c) 2008, National Institute of Informatics
+ *
+ * This file is part of SRL, and is free
+ * software, licenced under the GNU Library General Public License,
+ * Version 2, June 1991.
+ *
+ * A copy of this licence is included in the distribution in the file
+ * licence.html, and is also available at http://www.fsf.org/licensing/licenses/info/GPLv2.html.
+*/
+package srl.corpus.pre;
+import java.io.*;
+import srl.corpus.*;
+
+public class PreTokenizer extends org.apache.lucene.analysis.Tokenizer {
+    boolean finished = false;
+    
+public static char SPLITTER_CHAR1 = '\n', SPLITTER_CHAR2 = '\r';
+
+  /** Constructs a tokenizer for this Reader. */
+  public PreTokenizer(Reader reader) {
+    this(new FastCharStream(reader));
+    this.input = reader;
+  }
+
+  public org.apache.lucene.analysis.Token next() throws IOException {
+    try {
+        if(finished)
+            return null;
+        org.apache.lucene.analysis.Token rv = next2();
+        if(rv == null)
+            finished = true;
+        return rv;
+    } catch(ParseException x) {
+        x.printStackTrace();
+        throw new RuntimeException(x);
+    }
+  }
+}
+
+PARSER_END(PreTokenizer) 
+
+TOKEN : {					  // token patterns
+  < BEGIN_TAG : "<" (<ALPHANUM>)+ " cl=\"" (<ALPHANUM>)+ "\">">
+| < END_TAG : "</" (<ALPHANUM>)+ ">" >
+| < SPLITTER: [ "\n", "\r" ] >    
+| < ANYTHING: ~[ " ", "\n", "\r" ] (~[ " ", "\n", "\r" ])* > 
+| < #ALPHANUM : [
+    "0"-"9",
+    "A"-"Z",
+    "a"-"z" ] >
+}
+
+SKIP : { <NOISE: " " > }
+
+/** Returns the next token in the stream, or null at EOS.
+ * <p>The returned token's type is set to an element of {@link
+ * StandardTokenizerConstants#tokenImage}.
+ */
+org.apache.lucene.analysis.Token next2() throws IOException :
+{
+  Token tk = null;
+}
+{
+   (
+    tk = <BEGIN_TAG> |
+    tk = <END_TAG> |
+    tk = <SPLITTER> |
+    tk = <ANYTHING>
+   )
+    {
+	return
+	    SrlToken.makeToken2(tk.image,tk.kind,tk.beginColumn,tk.endColumn);
+    }
+   |
+    <EOF>
+    { return null; }
+}

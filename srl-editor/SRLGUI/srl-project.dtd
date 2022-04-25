@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!ELEMENT srlproject (rulesets, wordlists, corpus)>
+<!ELEMENT rulesets (ruleset)*>
+<!ELEMENT wordlists (wordlist)*>
+<!ELEMENT corpus EMPTY>
+<!ATTLIST corpus analyzer CDATA #REQUIRED> 
+<!ELEMENT ruleset (#PCDATA)>
+<!ELEMENT wordlist (#PCDATA)>)

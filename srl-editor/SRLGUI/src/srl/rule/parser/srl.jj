@@ -1,0 +1,661 @@
+/* 
+ * Copyright (c) 2008, National Institute of Informatics
+ *
+ * This file is part of SRL, and is free
+ * software, licenced under the GNU Library General Public License,
+ * Version 2, June 1991.
+ *
+ * A copy of this licence is included in the distribution in the file
+ * licence.html, and is also available at http://www.fsf.org/licensing/licenses/info/GPLv2.html.
+ */
+options {
+	STATIC = false;
+        UNICODE_INPUT = true;
+}
+
+PARSER_BEGIN(SrlParser) 
+/* 
+ * Copyright (c) 2008, National Institute of Informatics
+ *
+ * This file is part of SRL, and is free
+ * software, licenced under the GNU Library General Public License,
+ * Version 2, June 1991.
+ *
+ * A copy of this licence is included in the distribution in the file
+ * licence.html, and is also available at http://www.fsf.org/licensing/licenses/info/GPLv2.html.
+ */
+package srl.rule.parser;
+import srl.rule.*;
+import mccrae.srl.tools.struct.Pair;
+
+public class SrlParser {
+    private static int autoVarNum = 0;
+
+    private StringBuffer comment = new StringBuffer();
+	private String cleanLiteral(String literal) {
+            literal = literal.replaceAll("\\\"", "\"");
+            return literal.substring(1,literal.length()-1);
+        }
+}
+PARSER_END(SrlParser)
+	    
+SKIP : { "\t" | " " }
+TOKEN : { < EOL : "\n" | "\r" | "\n\r" | "\r\n" > }
+// The literal types
+TOKEN : { < STRMATCH : "strmatches" | "list" > }
+TOKEN : { < STRMATCH_REGEX : "regex" > }
+TOKEN : { < STRMATCH_ORTH : "ortho" > }
+TOKEN : { < BEGINS : "begins" > }
+TOKEN : { < ENDS : "ends" > }
+TOKEN : { < CONTAINS : "contains" > }
+TOKEN : { < WORDS : "words" > }
+TOKEN : { < OPTIONAL : "optional" > }
+TOKEN : { < NOT : "not" > }
+TOKEN : { < CASE : "case" > }
+// Some of useful token types
+TOKEN : { < OPEN_PARA : "(" > }
+TOKEN : { < CLOSE_PARA : ")" > }
+TOKEN : { < OPEN_BRACE : "{" > }
+TOKEN : { < CLOSE_BRACE : "}" > }
+TOKEN : { < COMMA : "," >  }
+TOKEN : { < PERCENT : "%" > }
+TOKEN : { < IMPLIES : ":-" > }
+TOKEN : { < COLON : ":" > }
+TOKEN : { < SEMICOLON : ";" > }
+TOKEN : { < STAR : "*" > }
+// A string literal marked with ""
+TOKEN : { < STRING_LITERAL : "\"" ( (~["\""]) | ( "\\" "\"")) * "\"" > }
+// A word list i.e, @wordlist
+TOKEN : { < WORDLIST : ("@"|"%") (["A"-"Z","a"-"z","0"-"9","_"])+ > }
+// A variable, must start with a capital letter
+TOKEN : { < VAR : (["A"-"Z"])(["A"-"Z","a"-"z","0"-"9"])* > }
+// A number accepts 20, 20.0 and 0.20
+TOKEN : { < NUMBER : ((["0"-"9"])+) | ((["0"-"9"])* "." (["0"-"9"])+ )> }
+// A identifier, starts with a lowercase letter
+TOKEN : { < WORD : (["a"-"z"])(["A"-"Z","a"-"z","0"-"9","_"])* > }
+// A comment starts with # and carries on from there
+TOKEN : { < COMMENT : "#" ( ~ ["\n","\r"] )* <EOL> > }
+
+
+// TR_RULESET -> (TR_RULE | COMMENT | EOL)*
+// TR_RULE -> VAR : WORD ( VAR | STRING_LITERAL ) HEAD_EXPR
+
+void readTRRules(RuleSet ruleSet) :
+{
+Token ruleHead, ruleHeadVar, ruleID;
+Rule rule;
+boolean cleanHead = false;
+}
+{
+    (
+     // First read the head, then the main body
+     ruleID = <VAR>
+     <COLON>
+     (
+     ruleHead = <WORD>
+     |
+     ruleHead = <STRMATCH>
+     |
+     ruleHead = <STRMATCH_REGEX>
+     |
+     ruleHead = <STRMATCH_ORTH>
+     |
+     ruleHead = <BEGINS>
+     |
+     ruleHead = <ENDS>
+     |
+     ruleHead = <CONTAINS>
+     |
+     ruleHead = <WORDS>
+     |
+     ruleHead = <OPTIONAL>
+     |
+     ruleHead = <NOT>
+     |
+     ruleHead = <CASE>
+     )
+     <OPEN_PARA>
+     (ruleHeadVar = <VAR>
+      { cleanHead = false; } 
+      | 
+      ruleHeadVar = <STRING_LITERAL>
+      { cleanHead = true; }
+     )
+     <CLOSE_PARA>
+     { rule = new Rule(Rule.TEMPLATE_RULE);
+       rule.addHead(ruleHead.image,ruleHeadVar.image); 
+       ruleSet.rules.add(new Pair<String,Rule>(ruleID.image, rule));
+       headExpr(rule);
+       rule.comment = comment.toString();
+       comment = new StringBuffer();
+     } 
+    |
+     ruleHead = <COMMENT>
+     { String t = ruleHead.image;
+       t = t.replaceAll("#\\s*","");
+       comment.append(t);
+     }
+    |
+     <EOL>
+     { comment = new StringBuffer(); }
+    ) *
+}
+
+Rule readTRRule() :
+{
+    Rule rule;
+    Token ruleHead, ruleHeadVar;
+    boolean cleanHead = false;
+}
+{
+      (
+     ruleHead = <WORD>
+     |
+     ruleHead = <STRMATCH>
+     |
+     ruleHead = <STRMATCH_REGEX>
+     |
+     ruleHead = <STRMATCH_ORTH>
+     |
+     ruleHead = <BEGINS>
+     |
+     ruleHead = <ENDS>
+     |
+     ruleHead = <CONTAINS>
+     |
+     ruleHead = <WORDS>
+     |
+     ruleHead = <OPTIONAL>
+     |
+     ruleHead = <NOT>
+     |
+     ruleHead = <CASE>
+     )
+     <OPEN_PARA>
+     (
+      ruleHeadVar = <VAR>
+      { cleanHead = false; }
+      |
+      ruleHeadVar = <STRING_LITERAL>
+      { cleanHead = true; }
+     )
+     <CLOSE_PARA>
+     { rule = new Rule(Rule.TEMPLATE_RULE);
+       rule.addHead(ruleHead.image,ruleHeadVar.image); 
+       headExpr(rule);
+       return rule;
+     } 
+}
+
+// NE_RULESET -> ( NE_RULE | EOL | COMMENT ) *
+// NE_RULE -> :- TYPE_EXPR
+
+void readNERules(RuleSet ruleSet) :
+{
+    Token ruleID;
+}
+{
+    (
+     ruleID = <VAR>
+     <COLON>
+     <IMPLIES>
+     { Rule r = new Rule(Rule.ENTITY_RULE);
+       ruleSet.rules.add(new Pair<String,Rule>(ruleID.image, r));
+       r.comment = comment.toString();
+       comment = new StringBuffer();
+       typeExpr(r);
+     } 
+    |
+     ruleID = <COMMENT>
+     { String t = ruleID.image;
+       t = t.replaceAll("#\\s*","");
+       comment.append(t);
+     }
+    |
+     <EOL>
+     { comment = new StringBuffer(); }
+    )*
+}
+
+Rule readNERule() :
+{
+}
+{
+    <IMPLIES>
+    { Rule r = new Rule(Rule.ENTITY_RULE);
+      typeExpr(r);
+      return r;
+    }
+}
+
+// HEAD_EXPR -> ; WORD ( VAR | STRING_LITERAL ) HEAD_EXPR
+//              | :- TYPE_EXPR
+void headExpr(Rule rule)  :
+{
+Token ruleHead, ruleHeadVar;
+boolean cleanHead = false;
+}
+{
+    <SEMICOLON>
+     (
+     ruleHead = <WORD>
+     |
+     ruleHead = <STRMATCH>
+     |
+     ruleHead = <STRMATCH_REGEX>
+     |
+     ruleHead = <STRMATCH_ORTH>
+     |
+     ruleHead = <BEGINS>
+     |
+     ruleHead = <ENDS>
+     |
+     ruleHead = <CONTAINS>
+     |
+     ruleHead = <WORDS>
+     |
+     ruleHead = <OPTIONAL>
+     |
+     ruleHead = <NOT>
+     |
+     ruleHead = <CASE>
+     )
+    <OPEN_PARA>
+    (ruleHeadVar = <VAR> 
+      { cleanHead = false; }
+      | 
+     ruleHeadVar = <STRING_LITERAL>
+     { cleanHead = true; }
+    )
+    <CLOSE_PARA>
+    { rule.addHead(ruleHead.image,ruleHeadVar.image); 
+      headExpr(rule); }
+   |
+    <IMPLIES>
+    { typeExpr(rule); }
+}
+
+// TYPE_EXPR -> EOL | COMMENT | EOF |
+//              strmatch ( WORDLIST ) TYPE_EXPR |
+//              strmatch_regex ( STRING_LITERAL ) TYPE_EXPR |
+//              strmatch_orth( STRING_LITERAL ) TYPE_EXPR |
+//              words ( NUMBER? , NUMBER? ) TYPE_EXPR |
+//              STRING_LITERAL TYPE_EXPR |
+//              WORD ( WORD , VAR ) ENTITY_BRANCH 
+
+void typeExpr(Rule rule) :
+{
+    Token s1 = null, s2 = null, s3 = null, s4 = null;
+}
+{
+     <EOL> | <EOF>
+    |
+    s1 = <COMMENT>
+     { 
+          rule.comment = s1.image.replaceAll("^#\\s*","");
+     }
+    |
+     <STRMATCH>
+     <OPEN_PARA>
+     s1 = <WORDLIST>
+     <CLOSE_PARA>
+     { rule.addTypeExpr(new ListMatch(s1.image)); }
+     { typeExpr(rule); }
+    |
+     <STRMATCH_REGEX>
+     <OPEN_PARA>
+     s1 = <STRING_LITERAL>
+     <CLOSE_PARA>
+     { rule.addTypeExpr(new Regex(cleanLiteral(s1.image))); }
+     { typeExpr(rule); }
+    |
+     <STRMATCH_ORTH>
+     <OPEN_PARA>
+     s1 = <STRING_LITERAL>
+     <CLOSE_PARA>
+     { rule.addTypeExpr(new Ortho(cleanLiteral(s1.image))); }
+     { typeExpr(rule); }
+    |
+     <WORDS>
+     <OPEN_PARA>
+     (s1 = <NUMBER>)?
+     <COMMA>
+     (s2 = <NUMBER>)?
+     <CLOSE_PARA>
+     { int i1 = (s1 == null ? 0 : Integer.parseInt(s1.image));
+       int i2 = (s2 == null ? Integer.MAX_VALUE : Integer.parseInt(s2.image));
+       rule.addTypeExpr(new SkipWords(i1,i2)); }
+     { typeExpr(rule); }
+     |
+     s1 = <STRING_LITERAL>
+     { rule.addTypeExpr(new Literal(cleanLiteral(s1.image)));
+       typeExpr(rule); }
+    |
+     <BEGINS>
+     <OPEN_PARA>
+     s1 = <STRING_LITERAL>
+     <CLOSE_PARA>
+     {
+        rule.addTypeExpr(new PartialLiteral(cleanLiteral(s1.image), 0));
+        typeExpr(rule); }
+    |
+     <ENDS>
+     <OPEN_PARA>
+     s1 = <STRING_LITERAL>
+     <CLOSE_PARA>
+     {
+        rule.addTypeExpr(new PartialLiteral(cleanLiteral(s1.image), 1));
+        typeExpr(rule); }
+    |
+     <CONTAINS>
+     <OPEN_PARA>
+     s1 = <STRING_LITERAL>
+     <CLOSE_PARA>
+     {
+        rule.addTypeExpr(new PartialLiteral(cleanLiteral(s1.image), 2));
+        typeExpr(rule); }
+    |
+     <OPTIONAL>
+     <OPEN_PARA>
+     ( s1 = <STRING_LITERAL> |
+       s1 = <WORDLIST> )
+     <CLOSE_PARA>
+     {
+        rule.addTypeExpr(new OptionalLiteral(s1.image));
+        typeExpr(rule); }
+    |
+     <NOT>
+     <OPEN_PARA>
+     ( s1 = <STRING_LITERAL> |
+       s1 = <WORDLIST> )
+     <CLOSE_PARA>
+     {
+         rule.addTypeExpr(new NegativeLiteral(s1.image));
+         typeExpr(rule); }
+    |
+     <CASE>
+     <OPEN_PARA>
+     s1 = <STRING_LITERAL> 
+     <CLOSE_PARA>
+     {
+        rule.addTypeExpr(new CaseSensitiveLiteral(cleanLiteral(s1.image)));
+        typeExpr(rule); }
+    |
+     s1 = <WORD>
+     (s4 = <STAR>)?
+     <OPEN_PARA>
+     s2 = <WORD>
+     (<COMMA>
+     s3 = <VAR>)?
+     <CLOSE_PARA>
+     { 
+       String varName;
+       if(s3 == null) {
+            varName = "EXPR" + autoVarNum++;
+       } else {
+            varName = s3.image;
+       }
+       Entity e = new Entity(s1.image,s2.image,varName,rule.getRuleType());
+       rule.addTypeExpr(e);
+       if(s4 != null) {
+            e.addTypeExpr(new SkipWords(0,Integer.MAX_VALUE));
+       }
+       int i = entityBranch(rule,e);
+       if(i != 0) {
+           e.addTypeExpr(new SkipWords(1, (rule.getRuleType() == Rule.TEMPLATE_RULE ? 
+					   Integer.MAX_VALUE : 1)));
+        } 
+        if(s4 != null) {
+            e.addTypeExpr(new SkipWords(0,Integer.MAX_VALUE));
+        }
+    }
+}
+
+// ENTITY_BRANCH -> EOL | COMMENT | EOF |
+//              strmatch ( WORDLIST ) TYPE_EXPR |
+//              strmatch_regex ( STRING_LITERAL ) TYPE_EXPR |
+//              strmatch_orth( STRING_LITERAL ) TYPE_EXPR |
+//              words ( NUMBER? , NUMBER? ) TYPE_EXPR |
+//              STRING_LITERAL TYPE_EXPR |
+//              WORD ( WORD , VAR ) ENTITY_BRANCH |
+//              { ENTITY_EXPR TYPE_EXPR 
+int entityBranch(Rule rule, Entity e) :
+{
+    Token s1 = null, s2 = null, s3 = null, s4 = null;
+}
+{
+    (
+     <EOL>
+     { return -1; }
+    |
+     <EOF>
+     { return -1; }
+    |
+     s1 = <COMMENT>
+     { if(rule instanceof Rule) {
+          ((Rule)rule).comment = s1.image.replaceAll("^#\\s*","");
+       }
+       return -1; }
+    |
+     <STRMATCH>
+     <OPEN_PARA>
+     s1 = <WORDLIST>
+     <CLOSE_PARA>
+     { rule.addTypeExpr(new ListMatch(s1.image));
+       typeExpr(rule);
+     }
+    |
+     <STRMATCH_REGEX>
+     <OPEN_PARA>
+     s1 = <STRING_LITERAL>
+     <CLOSE_PARA>
+     { rule.addTypeExpr(new Regex(cleanLiteral(s1.image)));
+       typeExpr(rule); }
+    |
+     <STRMATCH_ORTH>
+     <OPEN_PARA>
+     s1 = <STRING_LITERAL>
+     <CLOSE_PARA>
+     { rule.addTypeExpr(new Ortho(cleanLiteral(s1.image)));
+       typeExpr(rule); }
+    |
+     <WORDS>
+     <OPEN_PARA>
+     (s1 = <NUMBER>)?
+     <COMMA>
+     (s2 = <NUMBER>)?
+     <CLOSE_PARA>
+     { int i1 = (s1 == null ? 0 : Integer.parseInt(s1.image));
+       int i2 = (s2 == null ? Integer.MAX_VALUE : Integer.parseInt(s2.image));
+       rule.addTypeExpr(new SkipWords(i1,i2));
+       typeExpr(rule); }
+    |
+     s1 = <STRING_LITERAL>
+     { rule.addTypeExpr(new Literal(cleanLiteral(s1.image)));
+       typeExpr(rule); }
+    |
+     <BEGINS>
+     <OPEN_PARA>
+     s1 = <STRING_LITERAL>
+     <CLOSE_PARA>
+     {
+        rule.addTypeExpr(new PartialLiteral(cleanLiteral(s1.image), 0));
+       typeExpr(rule); }
+    |
+     <ENDS>
+     <OPEN_PARA>
+     s1 = <STRING_LITERAL>
+     <CLOSE_PARA>
+     {
+        rule.addTypeExpr(new PartialLiteral(cleanLiteral(s1.image), 1));
+       typeExpr(rule); }
+    |
+     <CONTAINS>
+     <OPEN_PARA>
+     s1 = <STRING_LITERAL>
+     <CLOSE_PARA>
+     {
+        rule.addTypeExpr(new PartialLiteral(cleanLiteral(s1.image), 2));
+       typeExpr(rule); }
+    |
+     <OPTIONAL>
+     <OPEN_PARA>
+     ( s1 = <STRING_LITERAL> |
+       s1 = <WORDLIST> )
+     <CLOSE_PARA>
+     {
+        rule.addTypeExpr(new OptionalLiteral(s1.image));
+        typeExpr(rule); }
+    |
+     <NOT>
+     <OPEN_PARA>
+     ( s1 = <STRING_LITERAL> |
+       s1 = <WORDLIST> )
+     <CLOSE_PARA>
+     {
+         rule.addTypeExpr(new NegativeLiteral(s1.image));
+         typeExpr(rule); }
+    |
+     <CASE>
+     <OPEN_PARA>
+     s1 = <STRING_LITERAL> 
+     <CLOSE_PARA>
+     {
+        rule.addTypeExpr(new CaseSensitiveLiteral(cleanLiteral(s1.image)));
+        typeExpr(rule); }
+    |
+     s1 = <WORD>
+     (s4 = <STAR>)?
+     <OPEN_PARA>
+     s2 = <WORD>
+     (<COMMA>
+     s3 = <VAR>)?
+     <CLOSE_PARA>
+     { String varName;
+       if(s3 == null) {
+            varName = "EXPR" + autoVarNum++;
+       } else {
+            varName = s3.image;
+       }
+       Entity e2 = new Entity(s1.image,s2.image,varName,rule.getRuleType());
+       rule.addTypeExpr(e2);
+       if(s4 != null) {
+            e.addTypeExpr(new SkipWords(0,Integer.MAX_VALUE));
+       }
+       int i = entityBranch(rule,e2);
+       if(i != 0) {
+            e2.addTypeExpr(new SkipWords(1,(rule.getRuleType() == Rule.TEMPLATE_RULE ? 
+					   Integer.MAX_VALUE : 1)));
+        } 
+     }
+    |
+     <OPEN_BRACE>
+     { entityExpr(e);
+       typeExpr(rule);
+       return 0; }
+    )
+    { return +1; }
+}
+
+// ENTITY_EXPR ->
+//              strmatch ( WORDLIST ) ENTITY_EXPR |
+//              strmatch_regex ( STRING_LITERAL ) ENTITY_EXPR |
+//              strmatch_orth( STRING_LITERAL ) ENTITY_EXPR |
+//              words ( NUMBER? , NUMBER? ) ENTITY_EXPR |
+//              STRING_LITERAL ENTITY_EXPR |
+//              }
+// *(unless ENTITY_BRANCH == }, if ENTITY_BRANCH = EOL throw parse exception)
+
+void entityExpr(Entity e) : 
+{
+    Token s1 = null, s2 = null, s3;
+}
+{
+     <STRMATCH>
+     <OPEN_PARA>
+     s1 = <WORDLIST>
+     <CLOSE_PARA>
+     { e.addTypeExpr(new ListMatch(s1.image)); }
+     { entityExpr(e); }
+    |
+     <STRMATCH_REGEX>
+     <OPEN_PARA>
+     s1 = <STRING_LITERAL>
+     <CLOSE_PARA>
+     { e.addTypeExpr(new Regex(cleanLiteral(s1.image))); }
+     { entityExpr(e); }
+    |
+     <STRMATCH_ORTH>
+     <OPEN_PARA>
+     s1 = <STRING_LITERAL>
+     <CLOSE_PARA>
+     { e.addTypeExpr(new Ortho(cleanLiteral(s1.image))); }
+     { entityExpr(e); }
+    |
+     <WORDS>
+     <OPEN_PARA>
+     (s1 = <NUMBER>)?
+     <COMMA>
+     (s2 = <NUMBER>)?
+     <CLOSE_PARA>
+     { int i1 = (s1 == null ? 0 : Integer.parseInt(s1.image));
+       int i2 = (s2 == null ? Integer.MAX_VALUE : Integer.parseInt(s2.image));
+       e.addTypeExpr(new SkipWords(i1,i2)); }
+     { entityExpr(e); }
+    |
+     s1 = <STRING_LITERAL>
+     { e.addTypeExpr(new Literal(cleanLiteral(s1.image)));
+     entityExpr(e); }
+    |
+     <BEGINS>
+     <OPEN_PARA>
+     s1 = <STRING_LITERAL>
+     <CLOSE_PARA>
+     {
+        e.addTypeExpr(new PartialLiteral(cleanLiteral(s1.image), 0));
+        entityExpr(e); }
+    |
+     <ENDS>
+     <OPEN_PARA>
+     s1 = <STRING_LITERAL>
+     <CLOSE_PARA>
+     {
+        e.addTypeExpr(new PartialLiteral(cleanLiteral(s1.image), 1));
+        entityExpr(e); }
+    |
+     <CONTAINS>
+     <OPEN_PARA>
+     s1 = <STRING_LITERAL>
+     <CLOSE_PARA>
+     {
+        e.addTypeExpr(new PartialLiteral(cleanLiteral(s1.image), 2));
+        entityExpr(e); }
+    |
+     <OPTIONAL>
+     <OPEN_PARA>
+     ( s1 = <STRING_LITERAL> |
+       s1 = <WORDLIST> )
+     <CLOSE_PARA>
+     {
+        e.addTypeExpr(new OptionalLiteral(s1.image));
+        entityExpr(e); }
+    |
+     <NOT>
+     <OPEN_PARA>
+     ( s1 = <STRING_LITERAL> |
+       s1 = <WORDLIST> )
+     <CLOSE_PARA>
+     {
+         e.addTypeExpr(new NegativeLiteral(s1.image));
+        entityExpr(e); }
+    |
+     <CASE>
+     <OPEN_PARA>
+     s1 = <STRING_LITERAL> 
+     <CLOSE_PARA>
+     {
+        e.addTypeExpr(new CaseSensitiveLiteral(cleanLiteral(s1.image)));
+        entityExpr(e); }
+    |
+     <CLOSE_BRACE>
+}

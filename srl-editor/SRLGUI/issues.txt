@@ -1,0 +1,27 @@
+### SrlProject
+-Cannot create new project in existing directory (should we?)
+-SrlProject doesn't adapt to user changes in directory structure (on load or polling?)
+### WordList
+-Validate input to wordlists, allow literal commas?
+### Rule
+-Skipwords doesn't work properly... eg head(X) :- skipwords(2) strmatches(@ab) strmatches(@bc) doesnt match "a a b".
+    Solution 1: Backtracking, computationally complex.
+    Solution 2: Proper NFSM -> DFSM converstion, heavy memory cost.
+-Handling variables correctly, eg if the same variable is defined twice in the same rule is this a syntax error, or does it only match if the same string is found?
+-Overlapping matches!
+-Nesting matches
+-Wordlists can't match multi-word
+-Literals and Wordlist, case insensitivity
+-Multi-token literals, auto-split
+- Check :- "start" words(1,) "end"
+### Corpus
+- Custom seperator tokenizer!
+- Sentence splitting
+### GUI
+- Ruleset panel disabled on no rule selected
+- Rule number change
+- Make "word list sets" clear
+### Other
+- Check encoding on loading
+- OutOfMemory Exception
+

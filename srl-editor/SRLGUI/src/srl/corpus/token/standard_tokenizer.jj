@@ -1,0 +1,242 @@
+/* 
+ * Copyright (c) 2008, National Institute of Informatics
+ *
+ * This file is part of SRL, and is free
+ * software, licenced under the GNU Library General Public License,
+ * Version 2, June 1991.
+ *
+ * A copy of this licence is included in the distribution in the file
+ * licence.html, and is also available at http://www.fsf.org/licensing/licenses/info/GPLv2.html.
+*/
+options {
+  STATIC = false;
+  UNICODE_INPUT = true;
+  USER_CHAR_STREAM = true;
+  OPTIMIZE_TOKEN_MANAGER = true;
+}
+PARSER_BEGIN(StandardTokenizer)
+/* 
+ * Copyright (c) 2008, National Institute of Informatics
+ *
+ * This file is part of SRL, and is free
+ * software, licenced under the GNU Library General Public License,
+ * Version 2, June 1991.
+ *
+ * A copy of this licence is included in the distribution in the file
+ * licence.html, and is also available at http://www.fsf.org/licensing/licenses/info/GPLv2.html.
+*/
+package srl.corpus.token;
+import java.io.*;
+import srl.corpus.*;
+
+public class StandardTokenizer extends org.apache.lucene.analysis.Tokenizer {
+    boolean finished = false;
+    /** If this variable is true, tokenizer will also output whitespace */
+    public boolean outputWhitespace = false;
+
+  /** Constructs a tokenizer for this Reader. */
+  public StandardTokenizer(Reader reader) {
+    this(new FastCharStream(reader));
+    this.input = reader;
+  }
+
+  public org.apache.lucene.analysis.Token next() throws IOException {
+    try {
+        if(finished)
+            return null;
+        org.apache.lucene.analysis.Token rv = next2();
+        if(rv == null)
+            finished = true;
+        return rv;
+    } catch(ParseException x) {
+        x.printStackTrace();
+        throw new RuntimeException(x);
+    }
+  }
+}
+
+PARSER_END(StandardTokenizer)
+
+TOKEN : {					  // token patterns
+
+  // basic word: a sequence of digits & letters
+  <ALPHANUM: (<LETTER>|<DIGIT>|<KOREAN>|<CJ>)+ >				  
+| < BEGIN_TAG : "<" <ALPHANUM> " cl=\"" <ALPHANUM> "\">">
+| < END_TAG : "</" <ALPHANUM> ">" >
+
+  // internal apostrophes: O'Reilly, you're, O'Reilly's
+  // use a post-filter to remove possesives
+| <APOSTROPHE: <ALPHA> ("'" <ALPHA>)+ >
+
+  // acronyms: U.S.A., I.B.M., etc.
+  // use a post-filter to remove dots
+| <ACRONYM: <ALPHA> "." (<ALPHA> ".")+ >
+
+  // company names like AT&T and Excite@Home.
+| <COMPANY: <ALPHA> ("&"|"@") <ALPHA> >
+
+  // email addresses
+| <EMAIL: <ALPHANUM> (("."|"-"|"_") <ALPHANUM>)* "@" <ALPHANUM> (("."|"-") <ALPHANUM>)+ >
+
+  // hostname
+| <HOST: <ALPHANUM> ("." <ALPHANUM>)+ >
+
+  // floating point, serial, model numbers, ip addresses, etc.
+  // every other segment must have at least one digit
+| <NUM: (<ALPHANUM> <P> <HAS_DIGIT>
+       | <HAS_DIGIT> <P> <ALPHANUM>
+       | <ALPHANUM> (<P> <HAS_DIGIT> <P> <ALPHANUM>)+
+       | <HAS_DIGIT> (<P> <ALPHANUM> <P> <HAS_DIGIT>)+
+       | <ALPHANUM> <P> <HAS_DIGIT> (<P> <ALPHANUM> <P> <HAS_DIGIT>)+
+       | <HAS_DIGIT> <P> <ALPHANUM> (<P> <HAS_DIGIT> <P> <ALPHANUM>)+
+        )
+  >
+
+  // Single Punctuation
+|  <PUNCTUATION: <PUNC> >
+
+| <#P: ("_"|"-"|"/"|"."|",") >
+| <#HAS_DIGIT:					  // at least one digit
+    (<LETTER>|<DIGIT>)*
+    <DIGIT>
+    (<LETTER>|<DIGIT>)*
+  >
+
+| < #ALPHA: (<LETTER>)+>
+| < #LETTER:					  // unicode letters
+      [
+       "*",
+       "\u0041"-"\u005a",
+       "\u0061"-"\u007a",
+       "\u00c0"-"\u00d6",
+       "\u00d8"-"\u00f6",
+       "\u00f8"-"\u00ff",
+       "\u0100"-"\u1fff",
+       "\uff21"-"\uff4a",
+       "\uff41"-"\uff5a",
+       "\u0e01"-"\u0e3a", // Thai
+       "\u0e40"-"\u0e4e",
+       "\uffa0"-"\uffdc" // Full Width
+      ]
+  >
+| < #PUNC:
+      [
+       "\u0021"-"\u002f", // ASCII Punctuation
+       "\u003a"-"\u0040",
+       "\u004b"-"\u0060",
+       "\u007b"-"\u007e",
+       "\u00a0"-"\u00bf", // Latin-1 Punctuation
+       "\u2000"-"\u201b", // General Punctuation
+       "\u2e00"-"\u2e30", // Supplemental Punctuation
+       "\u033f","\u034f", // Thai Punctuation
+       "\u3000"-"\u3020", // CJK Punctuation
+       "\uff00"-"\uff0f", // Full-width Punctuation
+       "\uff1a"-"\uff20",
+       "\uff3b"-"\uff40",
+       "\uff5b"-"\uff64",
+       "\uffe0"-"\uffee"
+      ]
+  >
+       
+| < CJ:                                          // Chinese, Japanese
+      [
+       "\u3040"-"\u318f",
+       "\u3100"-"\u312f",    // BaPoMoFo (aka ZhuYin)
+       "\u3040"-"\u309F",    // Japanese: Hiragana
+       "\u30A0"-"\u30FF",    // Japanese: Katakana
+       "\u31F0"-"\u31FF",    // Japanese: Katakana Phonetic Extensions
+       "\u3300"-"\u337f",
+       "\u3400"-"\u4dbf",    // CJK Unified Ideographs Ext. A
+       "\u4e00"-"\u9fff",
+       "\uf900"-"\ufaff",
+       "\uff65"-"\uff9f"
+      ]
+  >
+| < SPACE:
+    [ 
+      "\u0009"-"\r",
+      " ",
+      "\u0085",
+      "\u00a0",
+      "\u1680",
+      "\u180e",
+      "\u2000"-"\u200a",
+      "\u2028",
+      "\u2029",
+      "\u202f",
+      "\u205f",
+      "\u3000"
+    ]
+  >
+
+| < KOREAN:                                          // Korean
+      [
+       "\uac00"-"\ud7af",     // Hangul Syllables
+       "\u1100"-"\u11ff"      // Hangul Jamo
+       // "\uac00"-"\ud7a3"
+      ]
+  >
+
+      
+| < #DIGIT:					  // unicode digits
+      [
+       "\u0030"-"\u0039",
+       "\u0660"-"\u0669",
+       "\u06f0"-"\u06f9",
+       "\u0966"-"\u096f",
+       "\u09e6"-"\u09ef",
+       "\u0a66"-"\u0a6f",
+       "\u0ae6"-"\u0aef",
+       "\u0b66"-"\u0b6f",
+       "\u0be7"-"\u0bef",
+       "\u0c66"-"\u0c6f",
+       "\u0ce6"-"\u0cef",
+       "\u0d66"-"\u0d6f",
+       "\u0e50"-"\u0e59", // Thai numerals
+       "\u0ed0"-"\u0ed9",
+       "\u1040"-"\u1049",
+       "\uff10"-"\uff19"
+      ]
+  >
+}
+
+SKIP : { <NOISE: ~[] > }
+
+/** Returns the next token in the stream, or null at EOS.
+ * <p>The returned token's type is set to an element of {@link
+ * StandardTokenizerConstants#tokenImage}.
+ */
+org.apache.lucene.analysis.Token next2() throws IOException :
+{
+  Token tk = null;
+}
+{
+  ( tk = <ALPHANUM> |
+    tk = <PUNCTUATION> |
+    tk = <APOSTROPHE> |
+    tk = <ACRONYM> |
+    tk = <COMPANY> |
+    tk = <EMAIL> |
+    tk = <HOST> |
+    tk = <NUM> |
+    tk = <KOREAN> |
+    tk = <BEGIN_TAG> |
+    tk = <END_TAG>
+   )
+    {
+	return
+	    SrlToken.makeToken(tk.image,tk.kind,tk.beginColumn,tk.endColumn);
+     
+    }
+   |
+    tk = <SPACE>
+    {
+        if(outputWhitespace)
+            return SrlToken.makeToken(tk.image,tk.kind, tk.beginColumn, tk.endColumn);
+        else
+            return next();
+    }
+   |
+    <EOF>
+    { return null; }
+}

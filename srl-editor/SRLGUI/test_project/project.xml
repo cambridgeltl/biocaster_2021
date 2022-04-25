@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+	<!DOCTYPE srlproject [
+	<!ELEMENT srlproject (description, corpus, entities, entity_rulesets, template_rulesets, wordlists)>
+	<!ELEMENT description (#PCDATA)>
+	<!ATTLIST srlproject name CDATA #REQUIRED>
+	<!ELEMENT entity_rulesets (ruleset*)>
+	<!ELEMENT template_rulesets (ruleset*)>
+	<!ELEMENT wordlists (wordlist*)>
+	<!ELEMENT corpus EMPTY>
+	<!ATTLIST corpus processor CDATA #REQUIRED>
+	<!ELEMENT ruleset (#PCDATA)>
+	<!ELEMENT wordlist (#PCDATA)>
+	<!ELEMENT entities (entity*)>
+	<!ELEMENT entity (type,val)>
+	<!ELEMENT type (#PCDATA)>
+	<!ELEMENT val (#PCDATA)>
+]>
+<srlproject name="">
+<description></description>
+	<corpus processor="English"/>
+	<entities>
+	</entities>
+	<entity_rulesets>
+	</entity_rulesets>
+	<template_rulesets>
+	</template_rulesets>
+	<wordlists>
+	</wordlists>
+</srlproject>
