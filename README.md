@@ -12,7 +12,7 @@ reports, and a new cloud-based visualisation dashboard. Furthermore, we discuss 
 improvements, including combining risk assessment with event semantics and assessing the risk of
 outbreaks with multi-granularity. We hope that these efforts will benefit the global public health community.
 
-
+> Please see https://www.youtube.com/watch?v=9a0zeovneiA for a demostration on how to use our BioCaster system.
 
  ## Repo Structure
 - `med_doc_cls`: source codes of relevance classification task.
